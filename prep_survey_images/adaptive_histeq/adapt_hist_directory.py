@@ -60,6 +60,8 @@ for file in glob.glob(inputpath):
     final = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
     cv2.imshow('final', final)
 
-    cv2.imwrite(os.path.join(outputdir,os.path.basename(file)),final)
+    outfile = os.path.join(outputdir, os.path.basename(file)), final
+    cv2.imwrite(outfile)
+    print 'Saving ' + outfile
 
 
