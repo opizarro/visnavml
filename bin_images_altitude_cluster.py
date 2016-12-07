@@ -41,7 +41,7 @@ from itertools import islice, chain
 
 def skip_comments(iterable):
     for line in iterable:
-        if not line.startswith('%') or not line.startswith('ORIGIN_'):
+        if not line.startswith('%') and not line.startswith('ORIGIN_'):
             yield line
 
 
@@ -84,7 +84,7 @@ print 'mean alt ' + str(meanAlt)
 adir='stacked_cluster'
 t="%s/%s/" %(gpath,adir)
 if not os.path.exists(t):
-        os.makedirs(t)
+    os.makedirs(t)
 tmpf="%s/%s/clusterfile" %(gpath,adir)
 tmpf2="%s/%s/clusterfile2" %(gpath,adir)
 tmpf3="%s/%s/clusterfile3" %(gpath,adir)
@@ -99,10 +99,9 @@ tf.close()
 f = open(tmpf, 'w')
 f2 = open(tmpf2, 'w')
 f3 = open(tmpf3, 'w')
-i0= list(frange6(3.0,6.6,0.5))
+i0= list(frange6(1.65,2.35,0.1))
 for lowrange,hirange in itertools.izip(i0, itertools.islice(i0,1,None)):
     s="%s/%s/i%02.1f-%02.1f_cluster" %(gpath,adir,lowrange,hirange)
-
 
     if not os.path.exists(s):
         os.makedirs(s)
@@ -115,12 +114,13 @@ for lowrange,hirange in itertools.izip(i0, itertools.islice(i0,1,None)):
     convertDone=(len(sys.argv) == 5)
     print convertDone
     for ist in items:
-		limg=os.path.basename(ist['left']).replace('png','tif').strip(' \t\n\r')
-		rimg=os.path.basename(ist['right']).replace('png','tif').strip(' \t\n\r')
-		bname=os.path.splitext(limg)[0]
-		cluster=dcluster.get(bname)
+        limg=os.path.basename(ist['left']).replace('png','tif').strip(' \t\n\r')
+        rimg=os.path.basename(ist['right']).replace('png','tif').strip(' \t\n\r')
+        bname=os.path.splitext(limg)[0]
+        cluster=dcluster.get(bname)
+        print cluster
 	#cluster = 1
-		if cluster == None:
+        if cluster == None:
             continue
         clustername= '%d' %cluster
         clusterSet.add(clustername)
@@ -138,8 +138,6 @@ for lowrange,hirange in itertools.izip(i0, itertools.islice(i0,1,None)):
                       
             lraw=os.path.join(ll,limg)
             rraw=os.path.join(rl,rimg)
-
-            
 
             loutput=os.path.join(sc,limg).strip(' \t\n\r')
             routput=os.path.join(sc,rimg).strip(' \t\n\r')
