@@ -46,6 +46,7 @@ def main():
         if (cam_utime >= start_utime) and (cam_utime <= stop_utime):
             icounter += 1
             print('copying %s.' % (os.path.basename(ipath)))
+            shutil.copy(ipath,args.dive_location)
     print('copied %d images' % icounter)
 
 if __name__ == "__main__":

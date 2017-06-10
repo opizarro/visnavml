@@ -12,7 +12,7 @@ import string
 import time
 import calendar
 import bisect
-import shutil
+import shutil, sys, argparse
 #import utm
 
 def interp1d(t,x1,x2,y1,y2,z1,z2,a1,a2,t1,t2):
@@ -32,14 +32,14 @@ def main():
 	parser = argparse.ArgumentParser(description="Script to find LOKI poses for images from timestamps", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 	parser.add_argument("navcsv_file", help="The full path to the LOKI nav file.")
 	parser.add_argument("SOI_impath", help="The directory containing images that need poses.")
-	parser.add_argument("renavout", help="full path to output csv file with nav pose for each image")
+	parser.add_argument("cam_poses_file", help="full path to output csv file with nav pose for each image")
 	args = parser.parse_args()
 
 
 	# create table with time image name, lat, lon, depth, alt
 
 	# read nav csv
-
+	renavout = open(args.cam_poses_file,'w')
 
 	# navcsv_file = '/Users/opizarro/SIO_sfm/DEFAULT_lokiOut_TM1.txt'
 	# SIO_impath = '/Users/opizarro/SIO_sfm/camB/'
@@ -51,7 +51,7 @@ def main():
 
 	nav = collections.OrderedDict()
 
-	with open(navcsv_file) as csvfile:
+	with open(args.navcsv_file) as csvfile:
 		nav_fieldnames = ['idtag','timestamp','lat','lon','depth','hdg','pitch','roll','forvel','stbvel','dwnvel','alt']
 		navfile = csv.DictReader((line.replace('\0','') for line in csvfile), fieldnames = nav_fieldnames)
 		for row in navfile:
@@ -68,14 +68,14 @@ def main():
 
 
 
-	print 'searching ' + os.path.join(SIO_impath,"*.tif")
+	print 'searching ' + os.path.join(args.SOI_impath,"*.tif")
 	#os.listdir(sentry_impath)
 
-	recordn = 1
+	recordn = 0
 	#renavout = open('/Users/opizarro/SIO_sfm/SIO_test_camera_positions.csv','w')
 
 
-	for fullimfile in glob.glob(os.path.join(SIO_impath,"*.tif")):
+	for fullimfile in glob.glob(os.path.join(args.SOI_impath,"*.tif")):
 		# generate timestamp from name e.g. 	cIMG-20160413-065344-783853-153.tif
 		# sentry.YYYYmmDD.HHMMSS.f.N.tif
 		impath,imfile = os.path.split(fullimfile)
@@ -109,11 +109,6 @@ def main():
 		renavout.write(renavline)
 		recordn = recordn + 1
 
-
-# read images in folder
-
-	# convert name to timestamp
-
-	# find nearest time stamp in nav / interp
-
-	# write out new file
+	print("processed %d records" % recordn)
+if __name__== "__main__":
+	sys.exit(main())
