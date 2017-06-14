@@ -21,14 +21,7 @@ import argparse, sys
 #stop_time_str = '20160410-164038'
 
 # Parse arguments
-def main():
-    parser = argparse.ArgumentParser(description="Script to copy working images for 3D reconstruction.", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("image_location", help="The path to images from which a subset is going to be copied.")
-    parser.add_argument("dive_location", help="The output path where images are copied")
-    parser.add_argument("start_time_str", help="start time string in YYYYmmdd-HHMMSS format")
-    parser.add_argument("stop_time_str", help="end time string in YYYYmmdd-HHMMSS format")
-    args = parser.parse_args()
-
+def copy_SOI_images(args):
     start_utime = time.mktime(datetime.datetime.strptime(args.start_time_str, "%Y%m%d-%H%M%S").timetuple())
     stop_utime = time.mktime(datetime.datetime.strptime(args.stop_time_str, "%Y%m%d-%H%M%S").timetuple())
     # for each image check that time is between limits
@@ -48,6 +41,18 @@ def main():
             print('copying %s.' % (os.path.basename(ipath)))
             shutil.copy(ipath,args.dive_location)
     print('copied %d images' % icounter)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Script to copy working images for 3D reconstruction.", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("image_location", help="The path to images from which a subset is going to be copied.")
+    parser.add_argument("dive_location", help="The output path where images are copied")
+    parser.add_argument("start_time_str", help="start time string in YYYYmmdd-HHMMSS format")
+    parser.add_argument("stop_time_str", help="end time string in YYYYmmdd-HHMMSS format")
+    args = parser.parse_args()
+
+    copy_SOI_images(args)
+
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -16,7 +16,7 @@ import shutil
 #import utm
 
 def interp1d(t,x1,x2,y1,y2,z1,z2,a1,a2,t1,t2):
-	if t2 != t1:	
+	if t2 != t1:
 		u=(t-t1)/(t2-t1)
 	else:
 		u=0
@@ -33,8 +33,12 @@ def interp1d(t,x1,x2,y1,y2,z1,z2,a1,a2,t1,t2):
 # read nav csv
 
 
-navcsv_file = '/Users/opizarro/SIO_sfm/DEFAULT_lokiOut_TM1.txt'
-SIO_impath = '/Users/opizarro/SIO_sfm/camB/'
+# navcsv_file = '/Users/opizarro/SIO_sfm/DEFAULT_lokiOut_TM1.txt'
+# SIO_impath = '/Users/opizarro/SIO_sfm/camB/'
+SIO_impath = '/media/opizarro/Samsung_T3/chuckFK160407/falkor2016_leg1/survey_20160410_120620_R1922/ABE2P/'
+navcsv_file = '/media/opizarro/Samsung_T3/chuckFK160407/ROPOS/R1922/Loki/DEFAULT_lokiOut.txt'
+renavout = open('/media/opizarro/Samsung_T3/chuckFK160407/falkor2016_leg1/survey_20160410_120620_R1922/photoscan/ABE2P_camera_poses.csv','w')
+
 
 nav = collections.OrderedDict()
 
@@ -52,14 +56,15 @@ with open(navcsv_file) as csvfile:
 		t = utime
 		nav[t] = {'lat': row['lat'], 'lon': row['lon'], 'depth': row['depth'], 'hdg': row['hdg'],'pitch': row['pitch'],'roll': row['roll'],'alt': row['alt']}
 		#print str(nav[t]) + '\n'
-	
-		
+
+
 
 print 'searching ' + os.path.join(SIO_impath,"*.tif")
 #os.listdir(sentry_impath)
 
 recordn = 1
-renavout = open('/Users/opizarro/SIO_sfm/SIO_test_camera_positions.csv','w')
+#renavout = open('/Users/opizarro/SIO_sfm/SIO_test_camera_positions.csv','w')
+
 
 for fullimfile in glob.glob(os.path.join(SIO_impath,"*.tif")):
 	# generate timestamp from name e.g. 	cIMG-20160413-065344-783853-153.tif
@@ -70,7 +75,7 @@ for fullimfile in glob.glob(os.path.join(SIO_impath,"*.tif")):
 
 	camtype,imdate,imtime,imutime,inum_ext = string.split(imfile,'-',5)
 	#print 'vehicle ' + veh + ', date ' + imdate + ', time ' + imtime
-	
+
 	ttup = time.strptime(imdate+imtime,'%Y%m%d%H%M%S')
 	utime = str(calendar.timegm(ttup)) + '.'+ imutime
 
@@ -94,8 +99,8 @@ for fullimfile in glob.glob(os.path.join(SIO_impath,"*.tif")):
 	renavline = imfile + ',' + utime + ',' + str(lat) + ',' + str(lon) + ',' + Zpos + ',' + altitude + ',' + hdg + ',' + pitch + ',' + roll + '\n'
 	renavout.write(renavline)
 	recordn = recordn + 1
-			
-			
+
+
 # read images in folder
 
 	# convert name to timestamp
@@ -103,4 +108,3 @@ for fullimfile in glob.glob(os.path.join(SIO_impath,"*.tif")):
 	# find nearest time stamp in nav / interp
 
 	# write out new file
-

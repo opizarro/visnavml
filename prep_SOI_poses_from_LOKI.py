@@ -26,17 +26,7 @@ def interp1d(t,x1,x2,y1,y2,z1,z2,a1,a2,t1,t2):
 	a=a1+u*(a2-a1)
 	return (x,y,z,a)
 
-def main():
-# Parse arguments
-
-	parser = argparse.ArgumentParser(description="Script to find LOKI poses for images from timestamps", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-	parser.add_argument("navcsv_file", help="The full path to the LOKI nav file.")
-	parser.add_argument("SOI_impath", help="The directory containing images that need poses.")
-	parser.add_argument("cam_poses_file", help="full path to output csv file with nav pose for each image")
-	args = parser.parse_args()
-
-
-	# create table with time image name, lat, lon, depth, alt
+def generate_SOI_poses_from_LOKI(args):
 
 	# read nav csv
 	renavout = open(args.cam_poses_file,'w')
@@ -105,10 +95,25 @@ def main():
 		hdg = nav[navkeys[ind]]['hdg']
 		pitch = nav[navkeys[ind]]['pitch']
 		roll = nav[navkeys[ind]]['roll']
-		renavline = imfile + ',' + utime + ',' + str(lat) + ',' + str(lon) + ',' + Zpos + ',' + altitude + ',' + hdg + ',' + pitch + ',' + roll + '\n'
+		renavline = imfile + ','  + str(lat) + ',' + str(lon) + ',' + Zpos +  ',' + hdg + ',' + pitch + ',' + roll + ',' + utime + ',' + altitude + '\n'
 		renavout.write(renavline)
 		recordn = recordn + 1
 
 	print("processed %d records" % recordn)
+
+def main():
+# Parse arguments
+
+	parser = argparse.ArgumentParser(description="Script to find LOKI poses for images from timestamps", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+	parser.add_argument("navcsv_file", help="The full path to the LOKI nav file.")
+	parser.add_argument("SOI_impath", help="The directory containing images that need poses.")
+	parser.add_argument("cam_poses_file", help="full path to output csv file with nav pose for each image")
+	args = parser.parse_args()
+
+	generate_SOI_poses_from_LOKI(args)
+
+	# create table with time image name, lat, lon, depth, alt
+
+
 if __name__== "__main__":
 	sys.exit(main())
