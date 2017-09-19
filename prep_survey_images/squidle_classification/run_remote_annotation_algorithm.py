@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/Users/opizarro/git/visnav/prep_survey_images/squidlelib/squidlelib')
+sys.path.append('/Users/opizarro/git/visnavml/prep_survey_images/squidlelib/squidlelib')
 from api import SquidleAPI
 from classifiers import KelpClassifier
 import sys
@@ -9,16 +9,17 @@ import sys
 #    python examples/run_remote_annotation_algorithm.py <str:api_token> <int:annotation_set_id>
 
 
-#api_base = 'http://203.101.232.29/api'
-api_base = 'http://192.168.0.111:5000/api'   # testing
+api_base = 'http://203.101.232.29/api'
+#api_base = 'http://192.168.0.111:5000/api'   # testing
 
 #api_token = sys.argv[1]  # get api_token from cmd line argument
 #original_annotation_set_id = sys.argv[2]  # get annotation_set_id from cmd line argument
 
-api_token = "245ac56ca914e029a4a85e20ff1a5b70fdaa7a13d7ec0de17ad3dfdf" # ari on his machine
-#api_token = "1fb5bac7e8f7f8b189bba22c9c681a0d5f652e9aa4b0b6ad7d7350ef" # opizarro for web version
+#api_token = "1d26e2f0022a6253938a3d66df9456306e63a81d3acf80aea03342b4"
+#api_token = "245ac56ca914e029a4a85e20ff1a5b70fdaa7a13d7ec0de17ad3dfdf" # ari on his machine
+api_token = "1fb5bac7e8f7f8b189bba22c9c681a0d5f652e9aa4b0b6ad7d7350ef" # opizarro for web version
 #api_token = "e3eb9237e12fe3533473d2a28b12bf6d01b24e41099f036ea2bcdd11" # kelpbot online
-original_annotation_set_id =  123 #"48" # second set from WA # ""28"first set from WA
+original_annotation_set_id =  131 #"48" # second set from WA # ""28"first set from WA
 
 
 annotation_algorithm_name = "KELPBOT"
@@ -41,12 +42,12 @@ new_annotation_set_name = '['+annotation_algorithm_name+']> '+original_annotatio
 user_id = user['id']
 
 # Create a new annotation set to store classifier suggestions (HTTP POST REQUEST)
-# This new annotation set is derived on the previous one. It will be presented as suggestions and is not a 
+# This new annotation set is derived on the previous one. It will be presented as suggestions and is not a
 # standalone annotation set
 new_annotation_set = sq.new_annotation_set(
-    media_collection_id, 
-    new_annotation_set_name, 
-    tag_scheme_id, 
+    media_collection_id,
+    new_annotation_set_name,
+    tag_scheme_id,
     user_id,
     description="Suggested annotations by '"+annotation_algorithm_name+"' for the '"+original_annotation_set['name']+"' annotation set. This is not a standalone annotation set."
 )
@@ -82,28 +83,31 @@ n = len(media_list['objects'])
 i = 0
 for m in media_list['objects']:
     i += 1
+    if i < 10:
+       continue
     print "Item {}/{}".format(i, n)
 
     media_path = m['path_best']    # the url of the image (or media item)
 
     # Get the annotation label locations from the API (HTTP GET REQUEST)
+    print "getting annotations"
     media_annotations = sq.get_media_annotations(m['id'], original_annotation_set_id)
     annotations = media_annotations['annotations']
 
     # Get labeled annotations from classifier
     labeled_annotations = cl.predict(media_path, annotations)
-
+    print "saving annotations"
     j = 0
     for ma in labeled_annotations:
         # Create new annotation label
         if ma['prob'] > 0.6:    # if prob is greater than 0.5 make a new annotation label
             j += 1              # counter number of point labeled
-            sq.new_annotation({
+            sq.new_annotation_retry({
                 "annotation_set_id": new_annotation_set['id'],
                 "tag_group_id": ma['tag_group_id'],   # the tag_group to use for this label
                 "data": {"probability": ma['prob']},
                 "media_annotation_id": ma['media_annotation_id'],
                 "user_id": user_id
-            })
+            },10)
     print " - Labelled {}/{} points".format(j, len(annotations))
 print "DONE!!! Checkout the labels online!"
