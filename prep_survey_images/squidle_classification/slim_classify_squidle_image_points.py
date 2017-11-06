@@ -14,13 +14,23 @@ import numpy as np
 import tensorflow as tf
 
 import time
+import sys
+sys.path.append('/Users/opizarro/git/workspace/models/slim')
+from nets import inception
+from preprocessing import inception_preprocessing
 
 
 # import the necessary packages
 #import numpy as np
+import urllib2
 import urllib
 #import cv2
+slim = tf.contrib.slim
 
+batch_size = 1
+image_size = inception.inception_v1.default_image_size
+
+checkpoints_dir='/Users/opizarro/kelp-models/inception_v1/all'
 
 # METHOD #1: OpenCV, NumPy, and urllib
 def url_to_image(url):
@@ -51,50 +61,46 @@ def create_graph():
 def run_inference_on_image(imagePath,sess):
     answer = None
 
-
-
     if not tf.gfile.Exists(imagePath):
         tf.logging.fatal('File does not exist %s', imagePath)
         return answer
+    with tf.Graph().as_default():
+        url = 'file:///' + imagePath
+        image_string = urllib2.urlopen(url).read()
+        image = tf.image.decode_jpeg(image_string, channels=3)
+        processed_image = inception_preprocessing.preprocess_image(image, image_size, image_size, is_training=False)
+        processed_images  = tf.expand_dims(processed_image, 0)
 
-    #image_data = tf.gfile.FastGFile(imagePath, 'rb').read()
-    image_data_cv = cv2.imread(imagePath)
-    #image_data_cv = tf.gfile.FastGFile(imagePath, 'rb').read()
-    #image_ph = tf.placeholder("uint8", [None, None, 3])
-    #image_data = tf.identity(image_ph)
-    #image_data = sess.run(image_data,feed_dict={image_ph: image_data_cv})
+        # Create the model, use the default arg scope to configure the batch norm parameters.
+        with slim.arg_scope(inception.inception_v1_arg_scope()):
+            logits, _ = inception.inception_v1(processed_images, num_classes=2, is_training=False)
+            probabilities = tf.nn.softmax(logits)
 
-    #init_val = cv2.imread(imagePath)  # Construct a large numpy array.
-    #init_val = tf.gfile.FastGFile(imagePath, 'rb').read()
-    #init_placeholder = tf.placeholder("uint8", [None, None, 3])
-    #image_data = tf.Variable(init_placeholder)
-    #sess.run(image_data.initializer, feed_dict={init_placeholder: init_val})
+            init_fn = slim.assign_from_checkpoint_fn(
+            os.path.join(checkpoints_dir, 'model.ckpt-100000'),
+            slim.get_model_variables('InceptionV1'))
 
-    # for use with modelFullPath = '/Users/opizarro/trained_classifier/output_graph.pb'
-    softmax_tensor = sess.graph.get_tensor_by_name('final_result:0')
+        with tf.Session() as sess:
+            init_fn(sess)
+            np_image, probabilities = sess.run([image, probabilities])
+            probabilities = probabilities[0, 0:]
+            sorted_inds = [i[0] for i in sorted(enumerate(-probabilities), key=lambda x:x[1])]
 
+        
+        predictions = np.squeeze(probabilities)
 
-    #softmax_tensor = sess.graph.get_tensor_by_name('InceptionV1/Logits/Predictions/Softmax:0')
-
-    image_array = np.array(image_data_cv)[:, :, 0:3]  # Select RGB channels only.
-#    predictions = sess.run(softmax_tensor, feed_dict={'DecodeJpeg/contents:0': image_array})
-    predictions = sess.run(softmax_tensor, feed_dict={'DecodeJpeg:0': image_array})
-
-    #predictions = sess.run(softmax_tensor,{'DecodeJpeg/contents:0': image_data})
-    predictions = np.squeeze(predictions)
-
-    top_k = predictions.argsort()[-5:][::-1]  # Getting top 5 predictions
-    f = open(labelsFullPath, 'rb')
-    lines = f.readlines()
-    labels = [str(w).replace("\n", "") for w in lines]
-    for node_id in top_k:
-        human_string = labels[node_id]
-        score = predictions[node_id]
+        top_k = predictions.argsort()[-5:][::-1]  # Getting top 5 predictions
+        f = open(labelsFullPath, 'rb')
+        lines = f.readlines()
+        labels = [str(w).replace("\n", "") for w in lines]
+        for node_id in top_k:
+            human_string = labels[node_id]
+            score = predictions[node_id]
         #print('%s (score = %.5f)' % (human_string, score))
 
-    answer = labels[top_k[0]], predictions[top_k[0]]
+        answer = labels[top_k[0]], predictions[top_k[0]]
 
-    return answer
+        return answer
 
 def maybe_makedir(dirname, force=False):
   if os.path.isdir(dirname) and not force:
