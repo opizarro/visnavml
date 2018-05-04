@@ -4,11 +4,16 @@ import glob
 import argparse
 import matplotlib.pyplot as plt
 
+import signal
+from functools import partial
 
 # python transfer_inception_V3.py
 # --train_dir ~/data/training_data_collapsed/benthoz_299patch_split90-10/training/
 #--val_dir ~/data/training_data_collapsed/benthoz_299patch_split90-10/validation/
 # --plot
+
+#python transfer_inception_V3_multigpu_continue.py --train_dir ~/data/training_data_balanced/benthoz_ziggy_299patch_split90-10/training/ --val_dir ~/data/training_data_balanced/benthoz_ziggy_299patch_split90-10/validation/ --input_model_file inceptionv3-MALC_9888.model --nb_epoch 20 --plot
+
 
 # to parallelise model
 # requieres training and validation set sizes to be divisible by n_gpu
@@ -28,6 +33,8 @@ from keras.optimizers import Adam
 from keras.optimizers import RMSprop
 from keras.utils import multi_gpu_model
 import tensorflow as tf
+from keras.models import load_model
+
 
 IM_WIDTH, IM_HEIGHT = 299, 299 #fixed size for InceptionV3
 NB_EPOCHS = 20
@@ -86,6 +93,8 @@ def setup_to_finetune(model):
   #model.compile(optimizer=RMSprop(lr=0.00001), loss='categorical_crossentropy', metrics=['accuracy'])
 
 
+
+
 def train(args):
   """Use transfer learning and fine-tuning to train a network on a new dataset"""
   nb_train_samples = get_nb_files(args.train_dir)
@@ -93,6 +102,10 @@ def train(args):
   nb_val_samples = get_nb_files(args.val_dir)
   nb_epoch = int(args.nb_epoch)
   batch_size = int(args.batch_size)
+
+
+
+
 
   # data prep
   train_datagen =  ImageDataGenerator(
@@ -133,45 +146,23 @@ def train(args):
   )
 
   # setup model
-  # it's important to use cpu:0 to setup models for proper parallelisation (otherwise GPU does it)
+# it's important to use cpu:0 to setup models for proper parallelisation (otherwise GPU does it)
   with tf.device("/cpu:0"):
-      # inceptionV3 weights are downloaded to ~/.keras/models
-      base_model = InceptionV3(weights='imagenet', include_top=False) #include_top=False excludes final FC layer
-      print("============> number of layers in model {}".format(len(base_model.layers)))
-      model = add_new_last_layer(base_model, nb_classes)
-  # parallel
-  	# we'll store a copy of the model on *every* GPU and then combine
-	# the results from the gradient updates on the CPU
+  	model = load_model(args.input_model_file)
 
-
-  model = multi_gpu_model(model, n_gpu)
-  print("============> number of layers in model with classifier {}".format(len(model.layers)))
-  # transfer learning
-  print('--------- Starting transfer learning (last layer) -------------')
-
-  setup_to_transfer_learn(model, base_model)
-
-  history_tl = model.fit_generator(
-    train_generator,
-    epochs=1,
-    steps_per_epoch=200,
-    #steps_per_epoch=nb_train_samples // batch_size,
-    validation_data=validation_generator,
-    validation_steps=200,
-    #validation_steps=nb_val_samples // batch_size,
-    #use_multiprocessing=True,
-    #workers=16,
-    class_weight='auto')
-
-  #if args.plot:
-#    plot_training(history_tl)
 
   # fine-tuning
+  def signal_handler(signal, frame):
+      print('You pressed Ctrl+C! Saving model as inceptionv3-forcedexit.model ')
+      modelexit = model.get_layer('model_1')
+      modelexit.save('inceptionv3-forcedexit.model')
+      sys.exit(0)
+  signal.signal(signal.SIGINT, signal_handler) # save model if ctrl+c
 
-  print(model.summary())
-  print("============> number of layers in model with multi-gpu {}".format(len(model.layers)))
+  #print(model.summary())
+  #print("============> number of layers in model with multi-gpu {}".format(len(model.layers)))
   # extract model from multi-gpu graph
-  model = model.get_layer('model_1')
+  #model = model.get_layer('model_1')
   print("============> number of layers in model without multi-gpu {}".format(len(model.layers)))
   print('--------- Starting fine-tuning -------------------')
   setup_to_finetune(model)
@@ -180,19 +171,19 @@ def train(args):
   print(model.summary())
   history_ft = model.fit_generator(
     train_generator,
-    #steps_per_epoch=200,
+    #steps_per_epoch=50,
     steps_per_epoch=nb_train_samples // batch_size,
     epochs=nb_epoch,
     validation_data=validation_generator,
-    #validation_steps=200,
+    #validation_steps=50,
     validation_steps=nb_val_samples // batch_size,
     #use_multiprocessing=True,
-    #workers=16,
+    #workers=4,
     class_weight='auto')
  # extract model from multi-gpu graph
   model = model.get_layer('model_1')
   model.save(args.output_model_file)
-
+  plot_training(history_ft)
 
 def plot_training(history):
   acc = history.history['acc']
@@ -219,6 +210,7 @@ if __name__=="__main__":
   a.add_argument("--val_dir")
   a.add_argument("--nb_epoch", default=NB_EPOCHS)
   a.add_argument("--batch_size", default=BAT_SIZE)
+  a.add_argument("--input_model_file")
   a.add_argument("--output_model_file", default="inceptionv3-ft.model")
   a.add_argument("--plot", action="store_true")
 
