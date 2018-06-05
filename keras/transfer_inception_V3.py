@@ -12,12 +12,13 @@ import matplotlib.pyplot as plt
 
 # to parallelise model
 # requieres training and validation set sizes to be divisible by n_gpu
-extras = '/home/opizarro/git/keras-extras'
+extras = '/git/keras-extras'
 sys.path.append(extras)
 from utils.multi_gpu import make_parallel
 n_gpu = 2
 
 from keras import __version__
+print("Keras version {}".format(__version__))
 from keras.applications.inception_v3 import InceptionV3, preprocess_input
 from keras.models import Model
 from keras.layers import Dense, GlobalAveragePooling2D
@@ -27,7 +28,7 @@ from keras.optimizers import Adam
 from keras.optimizers import RMSprop
 
 IM_WIDTH, IM_HEIGHT = 299, 299 #fixed size for InceptionV3
-NB_EPOCHS = 1
+NB_EPOCHS = 50
 BAT_SIZE = 32*n_gpu
 FC_SIZE = 1024
 NB_IV3_LAYERS_TO_FREEZE = 172
@@ -130,19 +131,21 @@ def train(args):
   )
 
   # setup model
+  # if inceptionV3 weights are downloaded to ~/.keras/models
   base_model = InceptionV3(weights='imagenet', include_top=False) #include_top=False excludes final FC layer
-  print("============> number of layers in model %i") % len(base_model.layers)
+  print("============> number of layers in model {}".format(len(base_model.layers)))
   model = add_new_last_layer(base_model, nb_classes)
   # parallel
-  #model = make_parallel(model, n_gpu)
-  print("============> number of layers in model with classifier %i") % len(model.layers)
+  #model = multi_gpu_model(model, n_gpu)
+  print("============> number of layers in model with classifier {}".format(len(model.layers)))
   # transfer learning
-  print('--------- Starting transfer learning -------------')
+  print('--------- Starting transfer learning (last layer) -------------')
+
   setup_to_transfer_learn(model, base_model)
   history_tl = model.fit_generator(
     train_generator,
-    epochs=nb_epoch,
-    #steps_per_epoch=50,
+    epochs=1,
+    steps_per_epoch=200,
     steps_per_epoch=nb_train_samples // batch_size,
     validation_data=validation_generator,
     #validation_steps=50,
@@ -165,7 +168,7 @@ def train(args):
     train_generator,
     #steps_per_epoch=50,
     steps_per_epoch=nb_train_samples // batch_size,
-    epochs=nb_epoch*10,
+    epochs=nb_epoch,
     validation_data=validation_generator,
     #validation_steps=50,
     validation_steps=nb_val_samples // batch_size,

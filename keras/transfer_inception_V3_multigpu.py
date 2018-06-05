@@ -12,10 +12,10 @@ import matplotlib.pyplot as plt
 
 # to parallelise model
 # requieres training and validation set sizes to be divisible by n_gpu
-extras = '/home/opizarro/git/keras-extras'
+extras = '/git/keras-extras'
 sys.path.append(extras)
 from utils.multi_gpu import make_parallel
-n_gpu = 2
+n_gpu = 4
 
 from keras import __version__
 from keras.applications.inception_v3 import InceptionV3, preprocess_input
@@ -27,7 +27,7 @@ from keras.optimizers import Adam
 from keras.optimizers import RMSprop
 
 IM_WIDTH, IM_HEIGHT = 299, 299 #fixed size for InceptionV3
-NB_EPOCHS = 1
+NB_EPOCHS = 20
 BAT_SIZE = 32*n_gpu
 FC_SIZE = 1024
 NB_IV3_LAYERS_TO_FREEZE = 172
@@ -131,11 +131,11 @@ def train(args):
 
   # setup model
   base_model = InceptionV3(weights='imagenet', include_top=False) #include_top=False excludes final FC layer
-  print("============> number of layers in model %i") % len(base_model.layers)
+  print("============> number of layers in model {}".format(len(base_model.layers)))
   model = add_new_last_layer(base_model, nb_classes)
   # parallel
   model = make_parallel(model, n_gpu)
-  print("============> number of layers in model with classifier %i") % len(model.layers)
+  print("============> number of layers in model with classifier {}".format(len(model.layers)))
   # transfer learning
   print('--------- Starting transfer learning -------------')
 
@@ -143,14 +143,14 @@ def train(args):
 
   history_tl = model.fit_generator(
     train_generator,
-    epochs=nb_epoch,
+    epochs=1,
     steps_per_epoch=200,
     #steps_per_epoch=nb_train_samples // batch_size,
     validation_data=validation_generator,
     validation_steps=200,
     #validation_steps=nb_val_samples // batch_size,
-    #use_multiprocessing=True,
-    #workers=4,
+    use_multiprocessing=True,
+    workers=16,
     class_weight='auto')
 
   #if args.plot:
@@ -159,10 +159,10 @@ def train(args):
   # fine-tuning
 
   print(model.summary())
-  print("============> number of layers in model with multi-gpu %i") % len(model.layers)
+  print("============> number of layers in model with multi-gpu {}".format(len(model.layers)))
   # extract model from multi-gpu graph
   model = model.get_layer('model_1')
-  print("============> number of layers in model without multi-gpu %i") % len(model.layers)
+  print("============> number of layers in model without multi-gpu {}".format(len(model.layers)))
   print('--------- Starting fine-tuning -------------------')
   setup_to_finetune(model)
   model = make_parallel(model, n_gpu)
@@ -170,14 +170,14 @@ def train(args):
   print(model.summary())
   history_ft = model.fit_generator(
     train_generator,
-    steps_per_epoch=200,
-    #steps_per_epoch=nb_train_samples // batch_size,
+    #steps_per_epoch=200,
+    steps_per_epoch=nb_train_samples // batch_size,
     epochs=nb_epoch,
     validation_data=validation_generator,
-    validation_steps=200,
-    #validation_steps=nb_val_samples // batch_size,
-    #use_multiprocessing=True,
-    #workers=4,
+    #validation_steps=200,
+    validation_steps=nb_val_samples // batch_size,
+    use_multiprocessing=True,
+    workers=16,
     class_weight='auto')
  # extract model from multi-gpu graph
   model = model.get_layer('model_1')
